@@ -1,0 +1,174 @@
+alias userSP R7 ;
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1]*16 + 13] = SP ;
+alias processTable R9 ;
+processTable = PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16 ;
+userSP =SP;
+SP = [processTable + 11]*512 -1 ;
+alias syscall R0 ;
+syscall =  [[PTBR + 2*((userSP-5)/512)]*512 + (userSP-5)%512]; 
+alias ret R8 ;
+ret = [PTBR + 2*((userSP-1)/512)]*512 + (userSP-1)%512 ;
+if( syscall == 1) then
+	[processTable + 9 ] = 1 ;
+	alias fileName R1 ;
+	fileName = [[PTBR + 2*((userSP - 4)/512)]*512+ (userSP-4)%512 ] ;
+	alias filePermission R2 ;
+	filePermission = [[PTBR + 2*((userSP - 3)/512)]*512+ (userSP-3)%512 ] ;
+	alias counter R4 ;
+	counter = 0;
+	print fileName ;
+	while( counter < MAX_FILE_NUM)do
+		if  ( [INODE_TABLE + counter*16 +1] == fileName )then 
+			[ret] = 0 ;
+			[processTable + 9 ] = 0 ;
+			SP = userSP;
+			ireturn ;
+		endif ;
+		counter = counter + 1 ;
+	endwhile ;
+	counter = 0 ;
+	while (counter < MAX_FILE_NUM ) do
+		if( [INODE_TABLE + counter*16 + 1 ] == -1 ) then 
+			break ;
+		endif ;
+		counter = counter + 1 ;
+	endwhile ;
+	if ( counter == MAX_FILE_NUM ) then
+		[ret] = -1 ;
+		[processTable + 9 ] = 0 ;
+		SP = userSP;
+		ireturn ;
+	endif ;
+	alias inode R3;
+	inode = INODE_TABLE + counter*16 ;
+	[inode + 1] = fileName ;
+	[inode] = DATA ;
+	[inode + 2 ] = 0 ;
+	[inode + 8] = -1 ;
+	[inode + 9] = -1 ;
+	[inode + 10] = -1 ;
+	[inode + 11] = -1 ;
+	[inode + 3] = [processTable + 3] ;
+	[inode + 4 ] = filePermission ;
+	
+	alias root R5 ;
+	root = ROOT_FILE + counter*8 ;
+	[root ] = fileName ;
+	[root + 1 ] = 0;
+	[root + 2 ] = DATA ;
+	[root + 3 ] = [USER_TABLE + 2*[inode + 3] ] ;
+	[root + 4] = filePermission ;
+	[processTable + 9 ] = 0 ;
+	[ret] = 0 ;
+	SP = userSP ;
+	print "abc" ;
+	ireturn ;
+endif ;
+
+if (syscall == 4 ) then 
+	[processTable + 9 ] = 4 ;
+	alias fileName R1 ;
+	fileName = [[PTBR + 2*((userSP - 4)/512)]*512+ (userSP-4)%512 ] ;
+	alias counter R4 ;
+	counter = 0;
+	while( counter < MAX_FILE_NUM)do
+		if  ( [INODE_TABLE + counter*16 +1] == fileName )then 
+			if ([INODE_TABLE + counter*16 ] != DATA) then
+				[ret] = -1 ;
+				SP = userSP;
+				ireturn ;
+			endif ;
+			break ;
+		endif ;
+		counter = counter + 1 ;
+	endwhile ;
+	if ( counter == MAX_FILE_NUM ) then
+		[ret] = 0 ;
+		SP = userSP;
+		ireturn ;
+	endif ;
+	if ([INODE_TABLE + counter*16 + 4] == 0) then 
+		if ([INODE_TABLE + counter*16 + 3 ] != ROOT && [INODE_TABLE + counter*16 + 3] != [processTable + 3])then
+			[ret] = -1 ;
+			SP = userSP;
+			ireturn ;
+		endif ;
+	endif ;
+	alias functionNum R1 ;
+	functionNum = 4 ;
+	alias inode R2 ;
+	inode = counter ;
+	alias PID R3 ;
+	PID = [SYSTEM_STATUS_TABLE + 1] ;
+	multipush(R1,R2,R3,R4,R7) ;
+	call MOD_0 ;
+	multipop(R1,R2,R3,R4,R7) ;
+
+	if ([FILE_STATUS_TABLE + inode*4 + 1] != -1) then
+		multipush(R1,R2,R3,R4) ;
+		R1 = 5 ;
+		R2 = inode ;
+		R3 = [SYSTEM_STATUS_TABLE + 1] ;
+		call MOD_0;
+		multipop(R1,R2,R3,R4) ;
+		[ret] = -2 ;
+		SP = userSP;
+		ireturn ;		
+	endif ;
+	counter = 8 ;
+	while ( counter <12 ) do
+	   alias counter1 R6 ;
+	   counter1 = 0;
+		   while (counter1 < 4 ) do 
+			if ( [BUFFER_TABLE + counter1*4] == [INODE_TABLE + inode*16 + counter] && [BUFFER_TABLE + counter1*4+1] == 1 )then
+				[BUFFER_TABLE + inode*4+1] = 0 ;
+				multipush(R1,R2,R3,R4,R6,R7,R8,R9) ;
+				functionNum = 4 ;
+				R2 =  [INODE_TABLE + inode*16 + counter] ;
+				R3 = [SYSTEM_STATUS_TABLE+1] ;
+				call MOD_2 ;
+				multipop(R1,R2,R3,R4,R6,R7,R8,R9) ;
+			endif ;
+		        counter1 = counter1 + 1 ;
+		   endwhile ;
+	   counter = counter + 1;
+	endwhile ;
+	[INODE_TABLE + inode*16 + 1 ] = -1 ;
+	[INODE_TABLE + inode*8 ] = -1 ;
+	R1 = 5 ;
+	R2 = inode ;
+	R3 = [SYSTEM_STATUS_TABLE + 1] ;
+	multipush(R7);
+	call MOD_0;
+	multipop(R7) ;
+	SP = userSP ;
+	[ret] = 0 ;
+	[processTable + 9 ] = 0 ;
+	ireturn ;	
+endif ;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

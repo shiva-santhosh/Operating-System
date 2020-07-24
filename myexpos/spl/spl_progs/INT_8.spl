@@ -1,0 +1,125 @@
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1 ]*16 + 9 ] = 8; 
+alias userSP  R6 ;
+userSP = SP ;
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1 ]*16 + 13] =SP ;
+SP = [PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1 ]*16 + 11]*512 - 1 ;
+
+alias functionNum R1 ;
+alias retVal R0 ;
+multipush (R6) ;
+functionNum = 1 ;
+call MOD_1 ;
+multipop(R6) ;
+
+if ( retVal == -1 )then 
+	[[PTBR + 2 * ((userSP - 1) / 512)] * 512 + (userSP - 1) % 512] = -1 ;
+	SP = userSP ;
+	ireturn ;
+endif ;
+
+alias PID R7 ;
+PID = retVal ;
+if([PTBR + 4] == -1)then
+	functionNum = 1 ;
+	multipush(R6,R7) ;
+	call MOD_2 ;
+	multipop(R6,R7) ;
+	[PTBR+4] = retVal ;
+	[PTBR+5] = "1110" ;
+	functionNum = 1 ;
+	multipush(R6,R7) ;
+	call MOD_2 ;
+	multipop(R6,R7) ;
+	[PTBR+6] = retVal ;
+	[PTBR+7] = "1110" ;	
+endif ;
+
+functionNum = 1 ;
+multipush(R6,R7) ;
+call MOD_2 ;
+multipop(R6,R7) ;
+[PAGE_TABLE_BASE + PID*20 + 16] =retVal ;
+[PAGE_TABLE_BASE + PID*20 + 17] = [PTBR + 17];
+
+functionNum = 1 ;
+multipush(R6,R7) ;
+call MOD_2 ;
+multipop(R6,R7) ;
+[PAGE_TABLE_BASE + PID*20 + 18] =retVal ;
+[PAGE_TABLE_BASE + PID*20 + 19] = [PTBR + 19];
+
+functionNum = 1 ;
+multipush(R6,R7) ;
+call MOD_2 ;
+multipop(R6,R7) ;
+[PROCESS_TABLE + PID*16 + 11] = retVal ;
+alias curr R3 ;
+
+curr = [SYSTEM_STATUS_TABLE +1] ;
+
+[PROCESS_TABLE + PID*16 + 3] = [PROCESS_TABLE + curr * 16 + 3];
+[PROCESS_TABLE + PID*16 + 6] = [PROCESS_TABLE + curr * 16 + 6];
+[PROCESS_TABLE + PID*16 + 10] = [PROCESS_TABLE + curr * 16 + 10];
+[PROCESS_TABLE + PID*16 + 7] = [PROCESS_TABLE + curr * 16 + 7];
+[PROCESS_TABLE + PID*16 + 13] = [PROCESS_TABLE + curr * 16 + 13];
+[PROCESS_TABLE + PID*16 + 0] = 0;
+[PROCESS_TABLE + PID*16 + 9] = 0;
+[PROCESS_TABLE + PID*16 + 12] = 0;
+[PROCESS_TABLE + PID*16 + 4] = CREATED;
+[PROCESS_TABLE + PID*16 + 2] = curr ;
+
+alias parentPerProcessTable R5;
+alias counter R4;
+alias childPerProcessTable R8;
+childPerProcessTable = [PROCESS_TABLE + PID*16+11]*512+496;
+counter = 0 ;
+parentPerProcessTable = [PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16+11]*512+496;
+
+while(counter < 8 ) do
+   [childPerProcessTable + 2*counter] = [parentPerProcessTable + 2*counter] ;
+   [childPerProcessTable + 2*counter+1] = [parentPerProcessTable + 2*counter] ;
+   if( [parentPerProcessTable + 2*counter] == SEMAPHORE ) then 
+	[SEMAPHORE_TABLE+[parentPerProcessTable + 2*counter+1]*4 + 1]= [SEMAPHORE_TABLE+[parentPerProcessTable + 2*counter+1]*4 + 1]+1;
+   endif ;
+   counter = counter + 1;
+endwhile;
+
+counter = 2;
+while(counter<10) do
+   [DISK_MAP_TABLE+ PID*10 + counter]=[DISK_MAP_TABLE +curr*10 +counter];
+   counter=counter+1;
+endwhile;
+
+counter = 0;
+
+while(counter < 16)do
+	[PAGE_TABLE_BASE + PID*20 + counter ] = [PTBR + counter] ;
+	if(counter % 2 == 0 ) then 
+	[MEMORY_FREE_LIST + [PTBR + counter]] = [MEMORY_FREE_LIST + [PTBR + counter]] + 1 ;
+	endif ;
+	counter = counter +1 ;
+endwhile ;
+counter = 0;
+while(counter<512)do
+    [[PAGE_TABLE_BASE+PID*20+16]*512+counter]=[[PTBR+16]*512+counter];
+    counter=counter+1;
+endwhile;
+counter=0;
+
+while(counter<512)do
+    [[PAGE_TABLE_BASE+PID*20+18]*512+counter]=[[PTBR+18]*512+counter];
+    counter=counter+1;
+endwhile;
+
+[[PROCESS_TABLE+PID*16 + 11]*512]=BP;
+[[PAGE_TABLE_BASE+curr*20 + 2 * ((userSP - 1) / 512)] * 512 + (userSP - 1) % 512]=PID;
+[[PAGE_TABLE_BASE+PID*20 + 2 * ((userSP - 1) / 512)] * 512 + (userSP - 1) % 512]=0;
+[PROCESS_TABLE+curr*16 + 9] =0;
+SP = [PROCESS_TABLE +curr*16 + 13] ;
+
+breakpoint ;
+ireturn;
+
+
+
+

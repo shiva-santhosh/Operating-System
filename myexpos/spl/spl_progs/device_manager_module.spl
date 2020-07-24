@@ -1,0 +1,85 @@
+alias functionNum R1;
+alias currentPID R2;
+alias Word R3;
+
+if ( functionNum == 2) then
+   alias pageNum R3 ;
+   alias blockNum R4 ;
+   multipush(R0 ,R1 , R2 , R3 ,R4 ) ; 
+   functionNum = 3 ;
+   call MOD_0 ;
+   multipop( R0 ,R1 , R2 , R3 ,R4 ) ;
+   [DISK_STATUS_TABLE+1]=0;
+   [DISK_STATUS_TABLE+2]=pageNum;
+   [DISK_STATUS_TABLE+3]=blockNum;
+   [DISK_STATUS_TABLE+4]=currentPID;
+   load(pageNum,blockNum);
+   [PROCESS_TABLE + currentPID*16 + 4 ] = WAIT_DISK ;
+   multipush(R0 ,R1 , R2 , R3 ,R4 ) ;
+   call MOD_5 ;
+   multipop(R0 ,R1 , R2 , R3 ,R4 ) ;
+   breakpoint ;
+   return ;
+endif ;
+
+if( functionNum == 3) then
+   multipush(R0,R1,R2,R3);
+   R1 = 8 ;
+   call MOD_0;
+   multipop(R0,R1,R2,R3);
+   print Word;
+   multipush(R0,R1,R2,R3);
+   R1=9;
+   call MOD_0;
+   multipop(R0,R1,R2,R3);
+   return ;
+endif;
+
+if ( functionNum == 4) then 
+   multipush(R0,R1,R2,R3);
+   alias funcNum R1;
+   alias pid R2;
+   funcNum = 8;
+   pid = [SYSTEM_STATUS_TABLE+1];
+   call MOD_0;
+   multipop(R0,R1,R2,R3);
+   read;
+   [PROCESS_TABLE+([SYSTEM_STATUS_TABLE+1])*16+4] = WAIT_TERMINAL;
+   multipush(R0,R1,R2,R3);
+   call MOD_5;
+   multipop(R0,R1,R2,R3);
+   alias word R3;
+   alias physAdd R4;
+   physAdd = [PTBR+2*(word/512)]*512+(word%512);
+   [physAdd]=[PROCESS_TABLE+([SYSTEM_STATUS_TABLE+1]*16)+8];
+   return;
+endif ;
+if ( functionNum == 1) then
+	alias block R4;
+	multipush(R1,R2,R3,R4) ;
+	R1 = 3;
+	R2 = [SYSTEM_STATUS_TABLE+1] ;
+	call MOD_0 ;
+	multipop(R1,R2,R3,R4);
+	[DISK_STATUS_TABLE + 1] = 1;
+	[DISK_STATUS_TABLE + 2] = Word ;
+	[DISK_STATUS_TABLE + 3] = block ;
+	[DISK_STATUS_TABLE + 4] = currentPID ;
+	store(Word,block);
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 4] = WAIT_DISK ;
+	multipush(R1,R2,R3,R4) ;
+	call MOD_5 ;
+	multipop(R1,R2,R3,R4);
+	return ;
+endif ;
+
+
+
+
+
+
+
+
+
+
+

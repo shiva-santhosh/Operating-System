@@ -1,0 +1,141 @@
+alias functionNum R1 ;
+
+if (functionNum == 1) then 
+ alias counter R1;
+ alias retVal R0 ;
+ counter = 1;
+ while(counter<16) do
+   if([PROCESS_TABLE+counter*16 +4]==TERMINATED) then
+      retVal = counter;
+      [PROCESS_TABLE+ counter*16+4]=ALLOCATED;
+      [PROCESS_TABLE+ counter*16+14]=PAGE_TABLE_BASE+counter*20;
+      [PROCESS_TABLE+ counter*16+15]=10;
+      break;
+   endif;
+ counter=counter+1;
+ endwhile;
+ if(counter == 16 )then
+ retVal = -1;
+ endif;
+ return;
+endif ;
+
+if ( functionNum == 2) then
+	alias functionNum R1 ;
+	alias PID R2 ;
+	alias userPage R3 ;
+	userPage = [PROCESS_TABLE + PID*16 + 11 ] ;
+	alias arg R2 ;
+	arg = userPage ;
+	multipush ( R0 , R1 , R2 , R4 ) ;
+	functionNum = 2 ;
+	call MOD_2 ;
+	multipop ( R0 , R1 , R2 , R4 ) ;
+	return ;
+endif;
+
+if ( functionNum == 3) then 
+	
+	if ( [PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9] != 9  )then
+	 alias counter R7 ;
+	 counter = 0 ;
+	 while( counter < MAX_PROC_NUM ) do
+	   if( [PROCESS_TABLE + counter*16 + 4] == WAIT_PROCESS && [PROCESS_TABLE + counter*16 + 5] == [SYSTEM_STATUS_TABLE + 1]   )then
+		[PROCESS_TABLE + counter*16 + 4] = READY ;
+	   endif ;
+	   if ( [PROCESS_TABLE + counter*16 + 2] == [SYSTEM_STATUS_TABLE + 1] ) then
+		[PROCESS_TABLE + counter*16 + 2] = -1 ; 
+	   endif ;
+	  counter = counter + 1 ;
+	 endwhile ;
+	endif ;
+	alias PID R2 ;
+	multipush(R0 , R1 , R2) ;
+	functionNum = 4 ;
+	call MOD_1 ;
+	multipop( R0 , R1 , R2) ;
+	alias pid R3 ;
+	pid = PID ;
+	alias userPage R2 ;
+	multipush ( R0 , R1 , R2 , R3) ;
+	functionNum = 2 ;
+	userPage = [PROCESS_TABLE + pid*16 + 11 ] ;
+	call MOD_1 ;
+	multipop ( R0 , R1 , R2 , R3) ;
+	[PROCESS_TABLE + pid*16 + 4] =TERMINATED ;
+	return ;
+endif ;
+
+if ( functionNum == 4)then
+	alias PID R2 ;
+	[PAGE_TABLE_BASE + PID * 20 ] = -1 ;
+	[PAGE_TABLE_BASE + PID * 20 + 1] = "0000" ;
+	[PAGE_TABLE_BASE + PID * 20 + 2 ] = -1 ;
+	[PAGE_TABLE_BASE + PID * 20 + 3] = "0000" ;
+
+	alias counter R3 ;
+	counter = 2 ;
+
+	while(counter < 10 )do 
+		if( [PAGE_TABLE_BASE+ PID*20+2*counter] != -1 )then
+		multipush( R0 , R1 ,R2 , R3) ;
+		alias page R2 ;
+		functionNum = 2;
+		page =  [PAGE_TABLE_BASE+PID*20+2*counter] ;
+		call MOD_2 ;
+		multipop( R0 , R1 , R2 , R3 )  ; 
+		endif ;
+	[PAGE_TABLE_BASE+PID*20+2*counter] = -1 ;	
+	counter = counter + 1;
+	endwhile ;
+
+	if([DISK_MAP_TABLE + PID*10 + 2] != -1) then
+		multipush( R0 , R1 ,R2 , R3) ;
+		functionNum = 4 ;
+		alias blockNum R2 ;
+		blockNum = [DISK_MAP_TABLE + PID*10 + 2] ;
+		alias pid R3 ;
+		pid = PID ;
+		call MOD_2 ;
+		multipop( R0 , R1 ,R2 , R3) ;
+	endif ;
+	if([DISK_MAP_TABLE + PID*10 + 3] != -1) then
+		multipush( R0 , R1 ,R2 , R3) ;
+		functionNum = 4 ;
+		alias blockNum R2 ;
+		blockNum = [DISK_MAP_TABLE + PID*10 + 3] ;
+		alias pid R3 ;
+		pid = PID ;
+		call MOD_2 ;
+		multipop( R0 , R1 ,R2 , R3) ;
+	endif ;
+	if([DISK_MAP_TABLE + PID*10 + 8] != -1) then
+		multipush( R0 , R1 ,R2 , R3) ;
+		functionNum = 4 ;
+		alias blockNum R2 ;
+		blockNum = [DISK_MAP_TABLE + PID*10 + 8] ;
+		alias pid R3 ;
+		pid = PID ;
+		call MOD_2 ;
+		multipop( R0 , R1 ,R2 , R3) ;
+	endif ;
+	if([DISK_MAP_TABLE + PID*10 + 9] != -1) then
+		multipush( R0 , R1 ,R2 , R3) ;
+		functionNum = 4 ;
+		alias blockNum R2 ;
+		blockNum = [DISK_MAP_TABLE + PID*10 + 9] ;
+		alias pid R3 ;
+		pid = PID ;
+		call MOD_2 ;
+		multipop( R0 , R1 ,R2 , R3) ;
+	endif ;
+	[DISK_MAP_TABLE + PID*10 + 2] = -1 ;
+	[DISK_MAP_TABLE + PID*10 + 3] = -1 ;
+	[DISK_MAP_TABLE + PID*10 + 4] = -1 ;
+	[DISK_MAP_TABLE + PID*10 + 5] = -1 ;
+	[DISK_MAP_TABLE + PID*10 + 6] = -1 ;
+	[DISK_MAP_TABLE + PID*10 + 7] = -1 ;
+	[DISK_MAP_TABLE + PID*10 + 8] = -1 ;
+	[DISK_MAP_TABLE + PID*10 + 9] = -1 ;
+	return ;
+endif ;

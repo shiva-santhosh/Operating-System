@@ -1,0 +1,11 @@
+
+int main()
+{
+decl
+    int temp,num;
+enddecl
+begin
+    temp = exposcall("Exec","oddnum.xsm");
+    return 0;	
+end
+}
